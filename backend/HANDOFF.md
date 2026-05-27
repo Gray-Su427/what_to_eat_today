@@ -129,15 +129,22 @@
 ## 五、启动方式
 
 ```bash
-# 1. 启动数据库（Docker Desktop 需要先打开）
-docker start eat_db
-
-# 2. 启动后端服务
-conda activate wise_eat
+# 1. 启动数据库（需要先安装 Docker Desktop）
 cd backend
+docker compose up -d
+
+# 2. 安装 Python 依赖
+conda create -n wise_eat python=3.13 -y
+conda activate wise_eat
+pip install -r requirements.txt
+
+# 3. 初始化数据库（仅首次需要）
+python seed.py
+
+# 4. 启动后端服务
 uvicorn app.main:app --reload --port 8001
 
-# 3. 浏览器打开 API 文档
+# 5. 浏览器打开 API 文档
 # http://localhost:8001/docs
 ```
 

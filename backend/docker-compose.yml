@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:15
+    container_name: eat_db
+    environment:
+      POSTGRES_USER: eat
+      POSTGRES_PASSWORD: eat
+      POSTGRES_DB: eat
+    ports:
+      - "5432:5432"
+    volumes:
+      - eat_data:/var/lib/postgresql/data
+
+volumes:
+  eat_data:

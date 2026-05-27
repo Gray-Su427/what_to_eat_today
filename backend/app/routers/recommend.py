@@ -39,20 +39,33 @@ def get_recommendations(
 
     # 获取候选菜品
     candidates = query.all()
+    candidate_ids = [d.id for d in candidates]
+
+    # 一次性查询所有候选菜品的评分统计（避免N+1）
+    stats_map = {}
+    if candidate_ids:
+        stats_rows = (
+            db.query(
+                Review.dish_id,
+                func.avg(Review.rating).label("avg"),
+                func.count(Review.id).label("count"),
+            )
+            .filter(Review.dish_id.in_(candidate_ids))
+            .group_by(Review.dish_id)
+            .all()
+        )
+        for row in stats_rows:
+            stats_map[row.dish_id] = {
+                "avg": float(row.avg),
+                "count": row.count,
+            }
 
     # 按评分排序（热门推荐兜底策略）
     scored = []
     for dish in candidates:
-        stats = (
-            db.query(
-                func.avg(Review.rating).label("avg"),
-                func.count(Review.id).label("count"),
-            )
-            .filter(Review.dish_id == dish.id)
-            .first()
-        )
-        avg = float(stats.avg) if stats.avg else 0
-        count = stats.count or 0
+        stats = stats_map.get(dish.id, {"avg": 0, "count": 0})
+        avg = stats["avg"]
+        count = stats["count"]
         # 简单评分公式：平均分 * 0.7 + 评价数权重 * 0.3
         score = avg * 0.7 + min(count / 10, 1) * 5 * 0.3
         scored.append((dish, avg, count, score))

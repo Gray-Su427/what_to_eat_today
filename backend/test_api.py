@@ -66,12 +66,25 @@ def test_all():
     review = r.json()
     print(f"    OK: {review['rating']}星 - {review['comment']}")
 
-    # 8. 查看评价
+    # 8. 查看评价（路径改了：/reviews/{dish_id}）
     print("\n[8] 查看宫保鸡丁的评价...")
-    r = client.get("/reviews/dishes/1/reviews")
-    reviews = r.json()
-    for rv in reviews:
-        print(f"    - {rv['username']}: {rv['rating']}星 {rv['comment']}")
+    r = client.get("/reviews/1")
+    if r.status_code != 200:
+        print(f"    WARN: 状态码 {r.status_code} - {r.text[:100]}")
+    else:
+        reviews = r.json()
+        for rv in reviews:
+            print(f"    - {rv['username']}: {rv['rating']}星 {rv['comment']}")
+
+    # 8.1 测试重复评价拦截
+    print("\n[8.1] 重复评价同一道菜...")
+    r = client.post("/reviews", headers=headers, json={
+        "dish_id": 1, "rating": 3, "comment": "再评一次"
+    })
+    if r.status_code == 409:
+        print(f"    OK: 被拦截 - {r.json()['detail']}")
+    else:
+        print(f"    FAIL: 应该返回409，实际返回{r.status_code}")
 
     # 9. 推荐
     print("\n[9] 获取推荐菜品...")

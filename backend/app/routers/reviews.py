@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -8,27 +9,46 @@ from app.models.review import Review
 from app.models.user import User
 from app.schemas.review import ReviewCreate, ReviewResponse
 
-router = APIRouter(prefix="/reviews", tags=["评价"])
+router = APIRouter(tags=["评价"])
 
 
-@router.post("", response_model=ReviewResponse)
+@router.post("/reviews", response_model=ReviewResponse)
 def create_review(
     data: ReviewCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """提交评价（需要登录）"""
+    """提交评价（需要登录）。同一道菜重复提交会更新原有评价。"""
     # 检查菜品是否存在且在售
     dish = db.query(Dish).filter(Dish.id == data.dish_id, Dish.is_active == True).first()
     if not dish:
         raise HTTPException(status_code=404, detail="菜品不存在或已下架")
 
-    # 检查是否已评价过
+    # 查找是否已评价过，有则更新，无则新建
     existing = db.query(Review).filter(
         Review.user_id == current_user.id, Review.dish_id == data.dish_id
     ).first()
+
     if existing:
-        raise HTTPException(status_code=409, detail="你已经评价过这道菜了")
+        # 删除该用户对该菜品的所有旧评价，重新创建
+        db.query(Review).filter(
+            Review.user_id == current_user.id, Review.dish_id == data.dish_id
+        ).delete()
+        db.flush()
+        new_review = Review(
+            user_id=current_user.id,
+            dish_id=data.dish_id,
+            rating=data.rating,
+            comment=data.comment,
+            image_urls=data.image_urls,
+        )
+        db.add(new_review)
+        db.commit()
+        db.refresh(new_review)
+        return ReviewResponse(
+            **{c.name: getattr(new_review, c.name) for c in new_review.__table__.columns},
+            username=current_user.username,
+        )
 
     review = Review(
         user_id=current_user.id,
@@ -38,7 +58,11 @@ def create_review(
         image_urls=data.image_urls,
     )
     db.add(review)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="提交失败，请重试")
     db.refresh(review)
     return ReviewResponse(
         **{c.name: getattr(review, c.name) for c in review.__table__.columns},
@@ -46,7 +70,7 @@ def create_review(
     )
 
 
-@router.get("/{dish_id}", response_model=list[ReviewResponse])
+@router.get("/dishes/{dish_id}/reviews", response_model=list[ReviewResponse])
 def get_dish_reviews(
     dish_id: int,
     page: int = Query(1, ge=1),

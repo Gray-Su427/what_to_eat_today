@@ -17,7 +17,7 @@
 | 环境 | Python 3.13 + conda环境(wise_eat) + PostgreSQL 15(Docker) |
 | 认证 | JWT注册/登录/鉴权，bcrypt密码加密 |
 | 数据库 | 5张表：users, canteens, windows, dishes, reviews |
-| API | 12个端点全部实现（见下方列表） |
+| API | 14个端点全部实现（含根路径健康检查，见下方列表） |
 | 推荐 | 基于评分排序，排除已评价菜品 |
 | 测试数据 | 2食堂、5窗口、15菜品、1测试账号 |
 | CORS | 已开启，前端可跨域访问 |
@@ -28,8 +28,8 @@
 
 ### 连接信息
 
-- **开发阶段 API 地址**：`http://<后端电脑IP>:8000/api/v1`
-- **可视化 API 文档**：`http://<后端电脑IP>:8000/docs`
+- **开发阶段 API 地址**：`http://<后端电脑IP>:8001/api/v1`
+- **可视化 API 文档**：`http://<后端电脑IP>:8001/docs`
 - **测试账号**：`test@example.com` / `123456`
 
 ### 认证流程（Flutter 端实现）
@@ -56,8 +56,8 @@
 | GET | /windows/{id}/dishes | 否 | 窗口下的菜品 | - |
 | GET | /dishes/{id} | 否 | 菜品详情+评分 | - |
 | GET | /dishes?q=&tag=&page=&size= | 否 | 搜索菜品 | q:菜名, tag:标签 |
-| POST | /reviews | 是 | 提交评价 | {dish_id, rating(1-5), comment, image_urls} |
-| GET | /reviews/dishes/{id}/reviews | 否 | 菜品评价列表 | ?page=&size= |
+| POST | /reviews | 是 | 提交/更新评价（同一道菜重复提交会覆盖） | {dish_id, rating(1-5), comment, image_urls} |
+| GET | /dishes/{id}/reviews | 否 | 菜品评价列表 | ?page=&size= |
 | GET | /recommend | 是 | 推荐菜品(最多10个) | - |
 | GET | /users/me/preferences | 是 | 获取偏好 | - |
 | PUT | /users/me/preferences | 是 | 更新偏好 | {preferences: {...}} |
@@ -83,7 +83,7 @@
 
 ---
 
-## 三、给数据采集同学（束宇涵）
+## 三、给数据采集同学
 
 ### 你需要提供的数据格式
 
@@ -107,11 +107,11 @@
 
 ---
 
-## 四、给测试同学（苏正浩）
+## 四、给测试同学
 
 ### 如何测试
 
-1. 后端启动后，浏览器打开 `http://localhost:8000/docs`
+1. 后端启动后，浏览器打开 `http://localhost:8001/docs`
 2. 每个接口有"Try it out"按钮，点击可直接测试
 3. 需要登录的接口：先调 /auth/login 拿 token，点页面顶部 Authorize 按钮填入
 
@@ -135,10 +135,10 @@ docker start eat_db
 # 2. 启动后端服务
 conda activate wise_eat
 cd backend
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload --port 8001
 
 # 3. 浏览器打开 API 文档
-# http://localhost:8000/docs
+# http://localhost:8001/docs
 ```
 
 ---
